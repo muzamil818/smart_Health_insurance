@@ -27,6 +27,13 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "hospital", "policyholder", "officer"],
       default: "policyholder",
     },
+
+    // Hospital staff accounts are linked to a Hospital record
+    hospitalId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Hospital",
+      default: null,
+    },
   },
   {
     timestamps: true,

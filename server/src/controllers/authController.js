@@ -21,13 +21,21 @@ const register = async (req, res) => {
       });
     }
 
+    // Public registration is limited to policyholders.
+    // Admin / hospital / officer accounts are created by an administrator.
+    if (role && role !== "policyholder") {
+      return res.status(403).json({
+        message: "Only policyholders can self-register. Other roles are assigned by an admin.",
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      role: role || "policyholder",
+      role: "policyholder",
     });
 
     res.status(201).json({
@@ -93,6 +101,7 @@ const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        hospitalId: user.hospitalId || null,
       },
     });
   } catch (error) {
@@ -103,7 +112,20 @@ const login = async (req, res) => {
   }
 };
 
+const getMe = async (req, res) => {
+  res.json({
+    user: {
+      id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role,
+      hospitalId: req.user.hospitalId || null,
+    },
+  });
+};
+
 module.exports = {
   register,
   login,
+  getMe,
 };
