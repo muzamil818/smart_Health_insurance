@@ -13,9 +13,9 @@ const router = express.Router();
 router.use(protect);
 
 router.post("/", authorize("admin"), createPolicy);
-router.get("/", authorize("admin", "officer"), getPolicies);
+router.get("/", authorize("admin", "officer", "hospital"), getPolicies);
 router.get("/my-policy", authorize("policyholder"), getMyPolicy);
-router.get("/:id", authorize("admin", "officer", "policyholder"), getPolicyById);
+router.get("/:id", authorize("admin", "officer", "hospital", "policyholder"), getPolicyById);
 router.put("/:id", authorize("admin"), updatePolicy);
 
 module.exports = router;

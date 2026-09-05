@@ -28,8 +28,11 @@ const Auth = () => {
                 if (res.token) {
                     localStorage.setItem('token', res.token);
                     localStorage.setItem('user', JSON.stringify(res.user));
-                    // window.location.href = '/';
-                    navigate("/")
+                    if (res.user?.role === "hospital") {
+                        navigate("/hospital");
+                    } else {
+                        navigate("/");
+                    }
                 } else {
                     setMessage(res.message || 'Login failed');
                 }
@@ -94,11 +97,11 @@ const Auth = () => {
 
                         {/* Title & Tagline */}
                         <h2 className="text-2xl lg:text-3xl font-bold tracking-tight text-slate-100 leading-snug mb-3">
-                            {isLogin ? "Welcome Back to Smart Protection" : "Next-Gen AI Health Coverage"}
+                            {isLogin ? "Welcome Back to Smart Protection" : "Next-Gen Health Coverage"}
                         </h2>
                         <p className="text-slate-400 text-sm leading-relaxed mb-8">
                             {isLogin
-                                ? "Sign in to access your digital insurance dashboard, submit instant AI claims, and view policy benefits."
+                                ? "Sign in to access your digital insurance dashboard, submit claims, and view policy benefits."
                                 : "Join thousands of policyholders benefiting from smart automated claims, zero-friction policies, and 24/7 care support."}
                         </p>
 
@@ -111,8 +114,8 @@ const Auth = () => {
                                     </svg>
                                 </div>
                                 <div>
-                                    <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wide">Instant AI Claim Approval</h4>
-                                    <p className="text-xs text-slate-400 mt-0.5">Claims processed in under 2 minutes using smart verification algorithms.</p>
+                                    <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wide">Automated Claim Verification</h4>
+                                    <p className="text-xs text-slate-400 mt-0.5">Claims processed using smart rule-based verification algorithms.</p>
                                 </div>
                             </div>
 
@@ -150,7 +153,7 @@ const Auth = () => {
                                 {isLogin ? "Sign In to Account" : "Create New Account"}
                             </h1>
                             <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                                {isLogin ? "Enter your credentials to continue" : "Fill in your details to register as a policyholder"}
+                                {isLogin ? "Enter your credentials to continue" : "Fill in your details to create your account"}
                             </p>
                         </div>
 
