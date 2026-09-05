@@ -44,14 +44,23 @@ const createClaim = async (req, res) => {
       });
     }
 
+    const mongoose = require("mongoose");
+    if (!mongoose.Types.ObjectId.isValid(policyholderId)) {
+      return res.status(400).json({ message: "Invalid Policyholder ID format. Please select a registered policyholder." });
+    }
+
     const policyholder = await User.findById(policyholderId);
     if (!policyholder || policyholder.role !== "policyholder") {
-      return res.status(400).json({ message: "Valid policyholder is required" });
+      return res.status(400).json({ message: "Valid registered policyholder is required" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(policyId)) {
+      return res.status(400).json({ message: "Invalid Policy ID format. Please select a valid active insurance policy." });
     }
 
     const policy = await Policy.findById(policyId);
     if (!policy) {
-      return res.status(404).json({ message: "Policy not found" });
+      return res.status(404).json({ message: "Policy not found in system" });
     }
 
     const hospital = await Hospital.findById(req.user.hospitalId);

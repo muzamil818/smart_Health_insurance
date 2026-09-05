@@ -16,10 +16,11 @@ const canAccessClaim = (user, claim) => {
 
 const uploadDocument = async (req, res) => {
   try {
-    const { claimId, documentType } = req.body;
+    const claimId = req.body.claimId;
+    const documentType = req.body.documentType || "medical report";
 
-    if (!claimId || !documentType) {
-      return res.status(400).json({ message: "claimId and documentType are required" });
+    if (!claimId) {
+      return res.status(400).json({ message: "claimId is required" });
     }
 
     if (!req.file) {

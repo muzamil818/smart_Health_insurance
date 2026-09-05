@@ -2,6 +2,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
+const Hospital = require("../models/Hospital");
+
 // REGISTER
 const register = async (req, res) => {
   try {
@@ -21,21 +23,31 @@ const register = async (req, res) => {
       });
     }
 
-    // Public registration is limited to policyholders.
-    // Admin / hospital / officer accounts are created by an administrator.
-    if (role && role !== "policyholder") {
-      return res.status(403).json({
-        message: "Only policyholders can self-register. Other roles are assigned by an admin.",
-      });
-    }
+    const validRoles = ["policyholder", "hospital", "officer", "admin"];
+    const userRole = role && validRoles.includes(role) ? role : "policyholder";
 
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    let hospitalId = null;
+
+    if (userRole === "hospital") {
+      const regNumber = "HOSP-" + Math.floor(100000 + Math.random() * 900000);
+      const hospital = await Hospital.create({
+        name: name || "Care Hospital Facility",
+        registrationNumber: regNumber,
+        address: "100 Healthcare Boulevard, Suite 400",
+        contact: email,
+        isEligible: true,
+      });
+      hospitalId = hospital._id;
+    }
 
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      role: "policyholder",
+      role: userRole,
+      hospitalId,
     });
 
     res.status(201).json({
@@ -45,6 +57,7 @@ const register = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        hospitalId: user.hospitalId || null,
       },
     });
   } catch (error) {
