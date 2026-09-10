@@ -1,7 +1,11 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 
+// Every other collection is serialised with `_id`, and the client types
+// (UserRef, PolicyholderUser) expect it. `id` is kept alongside for the
+// auth-shaped payloads that already read it.
 const sanitize = (user) => ({
+  _id: user._id,
   id: user._id,
   name: user.name,
   email: user.email,

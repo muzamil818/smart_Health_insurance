@@ -1,7 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-
 const Hospital = require("../models/Hospital");
 
 // REGISTER
@@ -23,11 +22,28 @@ const register = async (req, res) => {
       });
     }
 
-    const validRoles = ["policyholder", "hospital", "officer", "admin"];
-    const userRole = role && validRoles.includes(role) ? role : "policyholder";
+    // Self-registration is open to policyholders, hospitals and officers.
+    // "admin" is deliberately NOT self-registerable: it can read every user
+    // record and the full audit trail, so administrators are created only by
+    // another admin via POST /api/users (itself admin-guarded) or the
+    // seed:admin script. Enforced here, not just hidden in the UI.
+    const SELF_REGISTERABLE_ROLES = ["policyholder", "hospital", "officer"];
+
+    if (role === "admin") {
+      return res.status(403).json({
+        message:
+          "Administrator accounts cannot be self-registered. Ask an existing administrator to create one.",
+      });
+    }
+
+    const userRole =
+      role && SELF_REGISTERABLE_ROLES.includes(role) ? role : "policyholder";
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // A hospital account needs a facility to file claims against, so one is
+    // created and linked on signup. It starts empanelled; an admin can suspend
+    // it from Admin -> Hospitals.
     let hospitalId = null;
 
     if (userRole === "hospital") {

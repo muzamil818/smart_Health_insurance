@@ -4,18 +4,13 @@ const {
   getDocumentsByClaim,
 } = require("../controllers/documentController");
 const { protect, authorize } = require("../middleware/authMiddleware");
-const { upload } = require("../middleware/uploadMiddleware");
+const { uploadSingleFile } = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
 
 router.use(protect);
 
-router.post(
-  "/",
-  authorize("hospital"),
-  upload.single("file"),
-  uploadDocument
-);
+router.post("/", authorize("hospital"), uploadSingleFile("file"), uploadDocument);
 router.get(
   "/:claimId",
   authorize("hospital", "officer", "admin", "policyholder"),

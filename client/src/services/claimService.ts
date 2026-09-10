@@ -22,6 +22,28 @@ export interface PolicyRef {
     status?: string;
 }
 
+export type ClaimStatus =
+    | "pending"
+    | "under_review"
+    | "approved"
+    | "rejected"
+    | "more_information_required";
+
+/** One rule evaluated by the server-side validation engine (claimValidation.js). */
+export interface ValidationCheck {
+    check: string;
+    passed: boolean;
+    details?: {
+        required?: string[];
+        uploaded?: string[];
+    };
+}
+
+export interface ValidationResults {
+    isValid: boolean;
+    checks: ValidationCheck[];
+}
+
 export interface Claim {
     _id: string;
     policyholderId: UserRef | string;
@@ -31,35 +53,60 @@ export interface Claim {
     treatmentDate: string;
     claimAmount: number;
     description?: string;
-    status: "pending" | "approved" | "rejected" | "more_information_required";
+    status: ClaimStatus;
+    validationResults?: ValidationResults | null;
     submittedAt?: string;
     createdAt?: string;
     updatedAt?: string;
 }
 
+/** Document types accepted by ClaimDocument.documentType on the server. */
+export const DOCUMENT_TYPES = [
+    "medical report",
+    "prescription",
+    "hospital bill",
+    "treatment record",
+    "other",
+] as const;
+
+export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+
+/** Types the validation engine requires before a claim can pass (REQUIRED_DOCUMENT_TYPES). */
+export const REQUIRED_DOCUMENT_TYPES: DocumentType[] = [
+    "medical report",
+    "hospital bill",
+];
+
 export interface ClaimDocument {
     _id: string;
     claimId: string;
-    fileName: string;
-    filePath: string;
-    fileType?: string;
+    documentType: DocumentType;
+    /** Server-relative path, e.g. "/uploads/1712345-987.pdf" */
+    fileUrl: string;
     uploadedAt?: string;
+    createdAt?: string;
 }
 
-export interface FraudRiskFactor {
-    factor: string;
-    score: number;
-    description: string;
+/** Absolute URL for a stored document, for use in an href. */
+export const documentUrl = (doc: ClaimDocument) =>
+    `http://localhost:5000${doc.fileUrl}`;
+
+export interface TriggeredRule {
+    rule: string;
+    points: number;
 }
+
+export type RiskLevel = "low" | "medium" | "high";
 
 export interface FraudScore {
     _id?: string;
     claimId?: string;
-    overallRiskScore: number;
-    riskLevel: "low" | "medium" | "high";
-    anomalyFlags?: string[];
-    riskFactors?: FraudRiskFactor[];
-    evaluatedAt?: string;
+    /** 0-100, capped. */
+    score: number;
+    riskLevel: RiskLevel;
+    triggeredRules?: TriggeredRule[];
+    calculatedAt?: string;
+    createdAt?: string;
 }
 
 export interface ApprovalRecord {
@@ -140,9 +187,10 @@ export const createClaim = async (payload: CreateClaimPayload): Promise<{ messag
             return { message: data.message || "Failed to submit claim", error: data.message };
         }
         return data;
-    } catch (error: any) {
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to submit claim";
         console.error("Error creating claim:", error);
-        return { message: error.message || "Failed to submit claim", error: error.message };
+        return { message, error: message };
     }
 };
 
@@ -158,18 +206,28 @@ export const updateClaim = async (id: string, payload: Partial<CreateClaimPayloa
             return { message: data.message || "Failed to update claim", error: data.message };
         }
         return data;
-    } catch (error: any) {
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to update claim";
         console.error("Error updating claim:", error);
-        return { message: error.message || "Failed to update claim", error: error.message };
+        return { message, error: message };
     }
 };
 
-export const uploadClaimDocument = async (claimId: string, file: File): Promise<{ message?: string; document?: ClaimDocument; error?: string }> => {
+/**
+ * Uploads one supporting document. `documentType` matters: the validation engine
+ * only passes the "Required documents are uploaded" check once both a
+ * "medical report" and a "hospital bill" exist for the claim.
+ */
+export const uploadClaimDocument = async (
+    claimId: string,
+    file: File,
+    documentType: DocumentType = "medical report"
+): Promise<{ message?: string; document?: ClaimDocument; error?: string }> => {
     try {
         const token = localStorage.getItem("token");
         const formData = new FormData();
         formData.append("claimId", claimId);
-        formData.append("documentType", "medical report");
+        formData.append("documentType", documentType);
         formData.append("file", file);
 
         const response = await fetch(`${API_URL}/documents`, {
@@ -184,8 +242,24 @@ export const uploadClaimDocument = async (claimId: string, file: File): Promise<
             return { error: data.message || "Document upload failed" };
         }
         return data;
-    } catch (error: any) {
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Document upload failed";
         console.error("Error uploading document:", error);
-        return { error: error.message || "Document upload failed" };
+        return { error: message };
+    }
+};
+
+export const getClaimFraudScore = async (claimId: string): Promise<FraudScore | null> => {
+    try {
+        const response = await fetch(`${API_URL}/claims/${claimId}/fraud-score`, {
+            method: "GET",
+            headers: getAuthHeaders(),
+        });
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data.fraudScore || null;
+    } catch (error) {
+        console.error(`Error fetching fraud score for claim ${claimId}:`, error);
+        return null;
     }
 };

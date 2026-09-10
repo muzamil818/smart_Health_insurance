@@ -3,20 +3,22 @@ import { useParams, Link } from "react-router-dom";
 import {
     ArrowLeft,
     FileText,
-    Shield,
     User,
-    Calendar,
-    DollarSign,
-    CheckCircle2,
-    XCircle,
-    Clock,
-    AlertTriangle,
     Upload,
     File,
     Activity,
-    Lock
+    AlertCircle,
 } from "lucide-react";
-import { getClaimById, uploadClaimDocument, type ClaimDetailResponse } from "../../services/claimService";
+import {
+    getClaimById,
+    uploadClaimDocument,
+    documentUrl,
+    DOCUMENT_TYPES,
+    REQUIRED_DOCUMENT_TYPES,
+    type ClaimDetailResponse,
+    type DocumentType,
+} from "../../services/claimService";
+import { StatusBadge, FraudScoreCard, ValidationChecklist } from "../../components/ClaimVisuals";
 
 const ClaimDetails = () => {
     const { id } = useParams<{ id: string }>();
@@ -25,6 +27,7 @@ const ClaimDetails = () => {
 
     // Document upload state
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [docType, setDocType] = useState<DocumentType>("medical report");
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
@@ -49,71 +52,19 @@ const ClaimDetails = () => {
         setUploadError(null);
         setUploadSuccess(null);
 
-        const res = await uploadClaimDocument(id, selectedFile);
+        const res = await uploadClaimDocument(id, selectedFile, docType);
         if (res.error) {
             setUploadError(res.error);
         } else {
-            setUploadSuccess("Document uploaded successfully!");
+            setUploadSuccess(
+                `Uploaded as "${docType}". Validation and fraud scoring were re-run for this claim.`
+            );
             setSelectedFile(null);
             // Refresh details
             const updated = await getClaimById(id);
             if (updated) setDetail(updated);
         }
         setUploading(false);
-    };
-
-    const getStatusBadge = (status?: string) => {
-        switch (status) {
-            case "approved":
-                return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                        <CheckCircle2 className="w-4 h-4" /> Approved
-                    </span>
-                );
-            case "rejected":
-                return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/30">
-                        <XCircle className="w-4 h-4" /> Rejected
-                    </span>
-                );
-            case "more_information_required":
-                return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                        <AlertTriangle className="w-4 h-4" /> Info Required
-                    </span>
-                );
-            default:
-                return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/30">
-                        <Clock className="w-4 h-4" /> Under Review
-                    </span>
-                );
-        }
-    };
-
-    const getRiskLevelBadge = (level?: string, score?: number) => {
-        if (!level && score === undefined) {
-            return <span className="text-xs text-slate-500">Evaluation Pending</span>;
-        }
-        if (level === "low" || (score !== undefined && score < 30)) {
-            return (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                    Low Risk ({score ?? 15}%)
-                </span>
-            );
-        }
-        if (level === "medium" || (score !== undefined && score < 70)) {
-            return (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                    Medium Risk ({score ?? 50}%)
-                </span>
-            );
-        }
-        return (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">
-                High Risk ({score ?? 85}%)
-            </span>
-        );
     };
 
     if (loading) {
@@ -144,6 +95,8 @@ const ClaimDetails = () => {
     }
 
     const { claim, documents, fraudScore, approvalRecords } = detail;
+    const uploadedTypes = documents.map((d) => d.documentType);
+    const missingRequired = REQUIRED_DOCUMENT_TYPES.filter((t) => !uploadedTypes.includes(t));
     const patientName = typeof claim.policyholderId === "object" ? claim.policyholderId?.name : "Patient";
     const patientEmail = typeof claim.policyholderId === "object" ? claim.policyholderId?.email : "N/A";
     const policyNum = typeof claim.policyId === "object" ? claim.policyId?.policyNumber : "N/A";
@@ -164,7 +117,7 @@ const ClaimDetails = () => {
                         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-100 font-mono">
                             Claim #{claim._id.substring(claim._id.length - 8)}
                         </h1>
-                        {getStatusBadge(claim.status)}
+                        <StatusBadge status={claim.status} size="md" />
                     </div>
                 </div>
 
@@ -222,36 +175,11 @@ const ClaimDetails = () => {
                     </div>
                 </div>
 
-                {/* AI Fraud Score */}
-                <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 space-y-4 backdrop-blur-xl">
-                    <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-                        <Shield className="w-4 h-4 text-emerald-400" />
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Fraud Assessment</h3>
-                    </div>
-                    <div className="space-y-3 text-xs">
-                        <div className="flex items-center justify-between">
-                            <span className="text-slate-500 font-bold uppercase text-[10px]">Risk Score:</span>
-                            {getRiskLevelBadge(fraudScore?.riskLevel, fraudScore?.overallRiskScore)}
-                        </div>
-
-                        {fraudScore?.anomalyFlags && fraudScore.anomalyFlags.length > 0 ? (
-                            <div className="space-y-1">
-                                <span className="text-slate-500 text-[10px] font-bold uppercase">Flags Identified:</span>
-                                <ul className="space-y-1">
-                                    {fraudScore.anomalyFlags.map((flag, idx) => (
-                                        <li key={idx} className="text-[11px] text-amber-400 flex items-center gap-1.5">
-                                            <AlertTriangle className="w-3 h-3 shrink-0" />
-                                            <span>{flag}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        ) : (
-                            <p className="text-[11px] text-slate-400 italic">No suspicious anomalies detected in automated screening.</p>
-                        )}
-                    </div>
-                </div>
+                <FraudScoreCard fraudScore={fraudScore} />
             </div>
+
+            {/* Automated validation checklist */}
+            <ValidationChecklist validationResults={claim.validationResults} />
 
             {/* Description & Clinical Notes */}
             {claim.description && (
@@ -303,14 +231,14 @@ const ClaimDetails = () => {
                                         <File className="w-5 h-5" />
                                     </div>
                                     <div className="truncate">
-                                        <div className="text-xs font-semibold text-slate-200 truncate">{doc.fileName}</div>
+                                        <div className="text-xs font-semibold text-slate-200 capitalize truncate">{doc.documentType}</div>
                                         <div className="text-[10px] text-slate-500">
                                             Uploaded {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : "recently"}
                                         </div>
                                     </div>
                                 </div>
                                 <a
-                                    href={`http://localhost:5000/${doc.filePath}`}
+                                    href={documentUrl(doc)}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-bold transition-colors"
@@ -319,6 +247,18 @@ const ClaimDetails = () => {
                                 </a>
                             </div>
                         ))}
+                    </div>
+                )}
+
+                {/* Missing-document warning drives the validation checklist above. */}
+                {missingRequired.length > 0 && (
+                    <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-2.5">
+                        <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-px" />
+                        <div className="text-[11px] text-amber-300">
+                            <span className="font-bold">Validation blocked.</span> This claim still needs a{" "}
+                            <span className="font-bold">{missingRequired.join(" and a ")}</span> before it can
+                            pass the &ldquo;Required documents are uploaded&rdquo; check.
+                        </div>
                     </div>
                 )}
 
@@ -340,6 +280,18 @@ const ClaimDetails = () => {
                     )}
 
                     <form onSubmit={handleUploadDoc} className="flex flex-col sm:flex-row items-center gap-3">
+                        <select
+                            value={docType}
+                            onChange={(e) => setDocType(e.target.value as DocumentType)}
+                            className="w-full sm:w-48 py-2 px-3 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-100 capitalize focus:outline-none focus:border-emerald-500 shrink-0 cursor-pointer"
+                        >
+                            {DOCUMENT_TYPES.map((type) => (
+                                <option key={type} value={type} className="capitalize">
+                                    {type}
+                                    {REQUIRED_DOCUMENT_TYPES.includes(type) ? " (required)" : ""}
+                                </option>
+                            ))}
+                        </select>
                         <input
                             type="file"
                             onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}

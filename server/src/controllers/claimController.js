@@ -8,17 +8,7 @@ const ClaimDocument = require("../models/ClaimDocument");
 const { processSubmittedClaim } = require("../services/claimProcessing");
 const { notifyUser } = require("../services/notificationService");
 const { createAuditLog } = require("../services/auditService");
-
-const canAccessClaim = (user, claim) => {
-  if (user.role === "admin" || user.role === "officer") return true;
-  if (user.role === "policyholder") {
-    return String(claim.policyholderId) === String(user._id);
-  }
-  if (user.role === "hospital") {
-    return String(claim.hospitalId) === String(user.hospitalId);
-  }
-  return false;
-};
+const { canAccessClaim } = require("../utils/access");
 
 const populateClaim = (query) =>
   query

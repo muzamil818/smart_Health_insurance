@@ -13,7 +13,7 @@ router.use(protect);
 
 router.post("/", authorize("admin"), createHospital);
 router.get("/", authorize("admin", "officer"), getHospitals);
-router.get("/:id", authorize("admin", "officer"), getHospitalById);
+router.get("/:id", authorize("admin", "officer", "hospital"), getHospitalById);
 router.put("/:id", authorize("admin"), updateHospital);
 
 module.exports = router;

@@ -1,19 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Users, Building2, FileText, Shield, Activity, ArrowRight } from "lucide-react";
 import {
-    Users,
-    Building2,
-    FileText,
-    Shield,
-    Activity,
-    AlertTriangle,
-    ArrowRight,
-    CheckCircle2,
-    Clock,
-    XCircle,
-    PlusCircle
-} from "lucide-react";
-import { getAdminReports, getAuditLogs, AdminReportData, AuditLogItem } from "../../services/adminService";
+    getAdminReports,
+    getAuditLogs,
+    type AdminReportData,
+    type AuditLogItem,
+} from "../../services/adminService";
 
 const AdminDashboard = () => {
     const [reports, setReports] = useState<AdminReportData | null>(null);

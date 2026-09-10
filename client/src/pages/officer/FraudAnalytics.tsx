@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { BarChart3, ShieldAlert, CheckCircle2, AlertTriangle, Scale } from "lucide-react";
-import { getFraudRules, FraudRuleItem } from "../../services/adminService";
+import { BarChart3, Scale, Layers } from "lucide-react";
+import { getFraudRules, type FraudRuleItem } from "../../services/adminService";
 import { getOfficerClaims } from "../../services/officerService";
 import type { Claim } from "../../services/claimService";
+import { statusLabel } from "../../components/ClaimVisuals";
 
 const FraudAnalytics = () => {
     const [rules, setRules] = useState<FraudRuleItem[]>([]);
@@ -23,6 +24,25 @@ const FraudAnalytics = () => {
 
         loadAnalytics();
     }, []);
+
+    const totalExposure = claims.reduce((sum, c) => sum + (c.claimAmount ?? 0), 0);
+    const approvedValue = claims
+        .filter((c) => c.status === "approved")
+        .reduce((sum, c) => sum + (c.claimAmount ?? 0), 0);
+
+    const statusBreakdown = (
+        [
+            ["pending", "bg-slate-400"],
+            ["under_review", "bg-sky-500"],
+            ["more_information_required", "bg-amber-500"],
+            ["approved", "bg-emerald-500"],
+            ["rejected", "bg-rose-500"],
+        ] as const
+    ).map(([status, colour]) => ({
+        status,
+        colour,
+        count: claims.filter((c) => c.status === status).length,
+    }));
 
     return (
         <div className="space-y-8 animate-fadeIn">
@@ -64,6 +84,91 @@ const FraudAnalytics = () => {
                                 </p>
                             </div>
                         ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Live Claim Portfolio Breakdown */}
+            <div className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 md:p-8 backdrop-blur-xl space-y-6">
+                <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+                    <Layers className="w-6 h-6 text-teal-400" />
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-100">Current Claim Portfolio</h2>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                            Live distribution of every claim in the adjudication pipeline
+                        </p>
+                    </div>
+                </div>
+
+                {loading ? (
+                    <div className="py-12 text-center text-slate-400 text-sm">
+                        <div className="w-6 h-6 border-2 border-teal-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                        <span>Loading claim portfolio...</span>
+                    </div>
+                ) : claims.length === 0 ? (
+                    <p className="text-xs text-slate-500 italic py-2">
+                        No claims have been submitted yet, so there is nothing to analyse.
+                    </p>
+                ) : (
+                    <div className="space-y-5">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                    Total Claims
+                                </span>
+                                <div className="mt-2 text-2xl font-extrabold text-slate-100">
+                                    {claims.length}
+                                </div>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                    Total Exposure
+                                </span>
+                                <div className="mt-2 text-2xl font-extrabold text-teal-400">
+                                    ${totalExposure.toLocaleString()}
+                                </div>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                    Approved Value
+                                </span>
+                                <div className="mt-2 text-2xl font-extrabold text-emerald-400">
+                                    ${approvedValue.toLocaleString()}
+                                </div>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                    Average Claim
+                                </span>
+                                <div className="mt-2 text-2xl font-extrabold text-slate-100">
+                                    ${Math.round(totalExposure / claims.length).toLocaleString()}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                Status distribution
+                            </span>
+                            {statusBreakdown.map(({ status, count, colour }) => (
+                                <div key={status} className="space-y-1">
+                                    <div className="flex items-center justify-between text-[11px]">
+                                        <span className="text-slate-300 font-semibold">
+                                            {statusLabel(status)}
+                                        </span>
+                                        <span className="text-slate-500 font-mono">
+                                            {count} ({((count / claims.length) * 100).toFixed(0)}%)
+                                        </span>
+                                    </div>
+                                    <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-500 ${colour}`}
+                                            style={{ width: `${(count / claims.length) * 100}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>

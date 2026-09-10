@@ -9,8 +9,7 @@ import {
     XCircle,
     AlertTriangle,
     Eye,
-    PlusCircle,
-    Building2
+    PlusCircle
 } from "lucide-react";
 import { getHospitalClaims, type Claim } from "../../services/claimService";
 

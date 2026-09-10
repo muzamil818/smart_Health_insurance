@@ -1,28 +1,24 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import {
     ArrowLeft,
-    Shield,
-    ShieldCheck,
     User,
-    Building2,
-    Calendar,
-    DollarSign,
     CheckCircle2,
-    XCircle,
-    Clock,
     AlertTriangle,
     FileText,
     Activity,
     RefreshCw,
-    Send
 } from "lucide-react";
-import { getClaimById, ClaimDetailResponse } from "../../services/claimService";
+import {
+    getClaimById,
+    documentUrl,
+    type ClaimDetailResponse,
+} from "../../services/claimService";
+import { StatusBadge, FraudScoreCard, ValidationChecklist } from "../../components/ClaimVisuals";
 import { approveClaim, rejectClaim, requestInformation, recalculateFraudScore } from "../../services/officerService";
 
 const OfficerClaimReview = () => {
     const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
     const [detail, setDetail] = useState<ClaimDetailResponse | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -83,58 +79,6 @@ const OfficerClaimReview = () => {
         setRecalculating(false);
     };
 
-    const getStatusBadge = (status?: string) => {
-        switch (status) {
-            case "approved":
-                return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                        <CheckCircle2 className="w-4 h-4" /> Approved
-                    </span>
-                );
-            case "rejected":
-                return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/30">
-                        <XCircle className="w-4 h-4" /> Rejected
-                    </span>
-                );
-            case "more_information_required":
-                return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                        <AlertTriangle className="w-4 h-4" /> Info Requested
-                    </span>
-                );
-            default:
-                return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/30">
-                        <Clock className="w-4 h-4" /> Pending Review
-                    </span>
-                );
-        }
-    };
-
-    const getRiskBadge = (riskLevel?: string, score?: number) => {
-        const numScore = score ?? 0;
-        if (riskLevel === "high" || numScore >= 60) {
-            return (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-extrabold bg-rose-500/10 text-rose-400 border border-rose-500/30">
-                    High Risk ({numScore}%)
-                </span>
-            );
-        }
-        if (riskLevel === "medium" || numScore >= 30) {
-            return (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                    Medium Risk ({numScore}%)
-                </span>
-            );
-        }
-        return (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                Low Risk ({numScore}%)
-            </span>
-        );
-    };
-
     if (loading) {
         return (
             <div className="py-24 text-center text-slate-400 text-sm">
@@ -156,9 +100,8 @@ const OfficerClaimReview = () => {
         );
     }
 
-    const { claim, documents, fraudScore, approvalRecords } = detail;
+    const { claim, documents, fraudScore } = detail;
     const patientName = typeof claim.policyholderId === "object" ? claim.policyholderId?.name : "Patient";
-    const patientEmail = typeof claim.policyholderId === "object" ? claim.policyholderId?.email : "N/A";
     const hospitalName = typeof claim.hospitalId === "object" ? claim.hospitalId?.name : "Hospital Care Facility";
     const policyNum = typeof claim.policyId === "object" ? claim.policyId?.policyNumber : "N/A";
     const policyLimit = typeof claim.policyId === "object" ? claim.policyId?.coverageLimit : undefined;
@@ -179,7 +122,7 @@ const OfficerClaimReview = () => {
                         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-100 font-mono">
                             Claim #{claim._id.substring(claim._id.length - 8)}
                         </h1>
-                        {getStatusBadge(claim.status)}
+                        <StatusBadge status={claim.status} size="md" />
                     </div>
                 </div>
 
@@ -207,48 +150,10 @@ const OfficerClaimReview = () => {
                 </div>
             )}
 
-            {/* AI / Rule-Based Fraud Inspection Panel */}
-            <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-teal-500/30 rounded-3xl p-6 backdrop-blur-xl space-y-4 shadow-xl">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
-                            <Shield className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <h2 className="text-base font-bold text-slate-100">Rule-Based Fraud Scoring Engine</h2>
-                            <p className="text-xs text-slate-400">Automated policy limit, duplicate, and anomaly risk assessment</p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        {getRiskBadge(fraudScore?.riskLevel, fraudScore?.overallRiskScore ?? (fraudScore as any)?.score)}
-                    </div>
-                </div>
-
-                {/* Risk Factors / Triggered Rules */}
-                <div className="space-y-3">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Triggered Risk Rules</h3>
-                    {(fraudScore as any)?.triggeredRules && (fraudScore as any).triggeredRules.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {(fraudScore as any).triggeredRules.map((tr: any, idx: number) => (
-                                <div key={idx} className="p-3 rounded-xl bg-slate-950/80 border border-amber-500/30 flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold">
-                                        <AlertTriangle className="w-4 h-4 shrink-0" />
-                                        <span>{tr.rule}</span>
-                                    </div>
-                                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold text-[10px]">
-                                        +{tr.points} pts
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4" />
-                            <span>No suspicious fraud indicators triggered by the rule engine.</span>
-                        </div>
-                    )}
-                </div>
+            {/* Automated decision support: fraud score and eligibility validation */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <FraudScoreCard fraudScore={fraudScore} />
+                <ValidationChecklist validationResults={claim.validationResults} />
             </div>
 
             {/* Information Cards Grid */}
@@ -311,9 +216,9 @@ const OfficerClaimReview = () => {
                         <div className="space-y-2">
                             {documents.map((doc) => (
                                 <div key={doc._id} className="flex items-center justify-between p-2 rounded-lg bg-slate-950/80 border border-slate-800 text-xs">
-                                    <span className="truncate text-slate-300">{doc.fileName}</span>
+                                    <span className="truncate text-slate-300 capitalize">{doc.documentType}</span>
                                     <a
-                                        href={`http://localhost:5000/${doc.filePath}`}
+                                        href={documentUrl(doc)}
                                         target="_blank"
                                         rel="noreferrer"
                                         className="text-teal-400 font-bold text-[11px] hover:underline shrink-0 ml-2"

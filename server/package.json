@@ -5,7 +5,9 @@
   "main": "dist/server.js",
   "scripts": {
     "start": "nodemon src/server.js",
-    "seed:admin": "node src/scripts/seedAdmin.js"
+    "dev": "nodemon src/server.js",
+    "seed:admin": "node src/scripts/seedAdmin.js",
+    "seed:demo": "node src/scripts/seedDemo.js"
   },
   "keywords": [],
   "author": "",

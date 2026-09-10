@@ -6,7 +6,6 @@ import {
     CheckCircle2,
     AlertCircle,
     Upload,
-    FileText,
     User,
     Shield,
     DollarSign,
@@ -30,7 +29,10 @@ const SubmitClaim = () => {
     const [treatmentDate, setTreatmentDate] = useState(new Date().toISOString().substring(0, 10));
     const [claimAmount, setClaimAmount] = useState<string>("");
     const [description, setDescription] = useState("");
-    const [file, setFile] = useState<File | null>(null);
+    // The validation engine requires BOTH a medical report and a hospital bill,
+    // so both are collected up front rather than one generic attachment.
+    const [reportFile, setReportFile] = useState<File | null>(null);
+    const [billFile, setBillFile] = useState<File | null>(null);
 
     // Submission states
     const [submitting, setSubmitting] = useState(false);
@@ -126,12 +128,38 @@ const SubmitClaim = () => {
             const claimId = res.claim._id;
             setCreatedClaimId(claimId);
 
-            // Upload supporting document if selected
-            if (file && claimId) {
-                await uploadClaimDocument(claimId, file);
+            // Upload each supplied document under its correct type. Every upload
+            // re-runs validation + fraud scoring server-side, so do them in order.
+            // Track failures: the claim itself is already saved, so a rejected
+            // file must be reported rather than swallowed behind a success banner.
+            const uploadFailures: string[] = [];
+            let attached = 0;
+
+            for (const [file, documentType] of [
+                [reportFile, "medical report"],
+                [billFile, "hospital bill"],
+            ] as const) {
+                if (!file) continue;
+                const upload = await uploadClaimDocument(claimId, file, documentType);
+                if (upload.error) {
+                    uploadFailures.push(`${documentType}: ${upload.error}`);
+                } else {
+                    attached += 1;
+                }
             }
 
-            setSuccessMsg("Claim submitted successfully! Fraud risk assessment and review process initiated.");
+            if (uploadFailures.length > 0) {
+                setErrorMsg(
+                    `The claim was created, but ${uploadFailures.length} document upload(s) were rejected — ` +
+                        `${uploadFailures.join("; ")}. Open the claim and re-upload so it can pass validation.`
+                );
+            }
+
+            setSuccessMsg(
+                attached === 2
+                    ? "Claim submitted with both required documents. Eligibility validation and fraud scoring have run."
+                    : "Claim submitted and sent for review. Attach the remaining required document(s) from the claim page so it can pass validation."
+            );
             setSubmitting(false);
         } catch (err: any) {
             setErrorMsg(err.message || "An unexpected error occurred.");
@@ -189,7 +217,8 @@ const SubmitClaim = () => {
                                 setTreatment("");
                                 setClaimAmount("");
                                 setDescription("");
-                                setFile(null);
+                                setReportFile(null);
+                                setBillFile(null);
                             }}
                             className="px-4 py-2 rounded-xl bg-slate-900 text-slate-300 border border-slate-800 text-xs font-semibold hover:bg-slate-800"
                         >
@@ -199,7 +228,8 @@ const SubmitClaim = () => {
                 </div>
             )}
 
-            {/* Error Message Banner */}
+            {/* Error Message Banner (can appear together with the success banner
+                when the claim saved but a document upload was rejected) */}
             {errorMsg && (
                 <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 flex items-center gap-3 text-rose-300 text-xs font-medium animate-fadeIn">
                     <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
@@ -352,26 +382,64 @@ const SubmitClaim = () => {
                             />
                         </div>
 
-                        {/* Supporting Document Upload */}
+                        {/* Supporting Documents Upload */}
                         <div className="space-y-2 md:col-span-2">
                             <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-                                Attach Supporting Document (Bills, Medical Reports, Receipts)
+                                Required Supporting Documents
                             </label>
-                            <div className="border-2 border-dashed border-slate-800 hover:border-emerald-500/50 rounded-2xl p-6 text-center bg-slate-950/40 transition-colors">
-                                <input
-                                    type="file"
-                                    id="file-upload"
-                                    onChange={(e) => setFile(e.target.files?.[0] || null)}
-                                    className="hidden"
-                                />
-                                <label htmlFor="file-upload" className="cursor-pointer space-y-2 block">
-                                    <Upload className="w-8 h-8 text-emerald-400 mx-auto" />
-                                    <div className="text-xs text-slate-300 font-semibold">
-                                        {file ? file.name : "Click to browse and upload medical documents"}
+                            <p className="text-[10px] text-slate-500 -mt-1">
+                                A claim only passes the automated document check once both a medical report
+                                and a hospital bill are attached. You can also add them later from the claim
+                                page.
+                            </p>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                                {[
+                                    {
+                                        id: "report-upload",
+                                        label: "Medical Report",
+                                        value: reportFile,
+                                        setter: setReportFile,
+                                    },
+                                    {
+                                        id: "bill-upload",
+                                        label: "Hospital Bill",
+                                        value: billFile,
+                                        setter: setBillFile,
+                                    },
+                                ].map(({ id, label, value, setter }) => (
+                                    <div
+                                        key={id}
+                                        className={`border-2 border-dashed rounded-2xl p-5 text-center bg-slate-950/40 transition-colors ${
+                                            value
+                                                ? "border-emerald-500/50"
+                                                : "border-slate-800 hover:border-emerald-500/50"
+                                        }`}
+                                    >
+                                        <input
+                                            type="file"
+                                            id={id}
+                                            accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                                            onChange={(e) => setter(e.target.files?.[0] || null)}
+                                            className="hidden"
+                                        />
+                                        <label htmlFor={id} className="cursor-pointer space-y-2 block">
+                                            {value ? (
+                                                <CheckCircle2 className="w-7 h-7 text-emerald-400 mx-auto" />
+                                            ) : (
+                                                <Upload className="w-7 h-7 text-emerald-400 mx-auto" />
+                                            )}
+                                            <div className="text-xs font-bold text-slate-200">{label}</div>
+                                            <div className="text-[10px] text-slate-400 truncate px-2">
+                                                {value ? value.name : "Click to browse"}
+                                            </div>
+                                        </label>
                                     </div>
-                                    <p className="text-[10px] text-slate-500">PDF, PNG, JPG files up to 10MB</p>
-                                </label>
+                                ))}
                             </div>
+                            <p className="text-[10px] text-slate-500">
+                                PDF, PNG, JPG, DOC up to 5MB each.
+                            </p>
                         </div>
                     </div>
 

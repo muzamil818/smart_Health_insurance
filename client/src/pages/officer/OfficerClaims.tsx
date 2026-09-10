@@ -9,7 +9,6 @@ import {
     XCircle,
     AlertTriangle,
     Eye,
-    Building2,
     Shield
 } from "lucide-react";
 import { getOfficerClaims } from "../../services/officerService";

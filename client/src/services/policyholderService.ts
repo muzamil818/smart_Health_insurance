@@ -1,6 +1,6 @@
 const API_URL = "http://localhost:5000/api";
 
-import type { Claim, PolicyRef } from "./claimService";
+import type { Claim } from "./claimService";
 
 export interface PolicyholderPolicy {
     _id: string;

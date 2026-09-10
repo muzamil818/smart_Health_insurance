@@ -9,8 +9,7 @@ import {
     LogOut,
     Globe,
     Menu,
-    X,
-    Bell
+    X
 } from "lucide-react";
 
 interface User {

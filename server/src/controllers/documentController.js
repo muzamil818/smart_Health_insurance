@@ -2,17 +2,7 @@ const Claim = require("../models/Claim");
 const ClaimDocument = require("../models/ClaimDocument");
 const { processSubmittedClaim } = require("../services/claimProcessing");
 const { createAuditLog } = require("../services/auditService");
-
-const canAccessClaim = (user, claim) => {
-  if (user.role === "admin" || user.role === "officer") return true;
-  if (user.role === "policyholder") {
-    return String(claim.policyholderId) === String(user._id);
-  }
-  if (user.role === "hospital") {
-    return String(claim.hospitalId) === String(user.hospitalId);
-  }
-  return false;
-};
+const { canAccessClaim } = require("../utils/access");
 
 const uploadDocument = async (req, res) => {
   try {
@@ -51,10 +41,13 @@ const uploadDocument = async (req, res) => {
       claimId: claim._id,
     });
 
-    if (
-      claim.status === "pending" ||
-      claim.status === "more_information_required"
-    ) {
+    // Re-run validation and fraud scoring whenever new evidence arrives, unless
+    // the claim already has a final decision. Previously this skipped
+    // "under_review" — the status every submitted claim immediately lands in —
+    // so documents uploaded after submission never cleared the
+    // "Required documents are uploaded" check.
+    const DECIDED = ["approved", "rejected"];
+    if (!DECIDED.includes(claim.status)) {
       await processSubmittedClaim(claim, req.user._id);
     }
 
