@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, ShieldCheck, Mail, Phone, MapPin, Calendar, CheckCircle2, User, FileText } from "lucide-react";
+import { Building2, ShieldCheck, Mail, Phone, MapPin, CheckCircle2, FileText } from "lucide-react";
 import { getHospitalProfile, type HospitalProfileData } from "../../services/hospitalService";
 import { getHospitalClaims } from "../../services/claimService";
 

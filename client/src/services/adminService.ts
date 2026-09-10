@@ -1,6 +1,6 @@
 const API_URL = "http://localhost:5000/api";
 
-import type { UserRef, HospitalRef, PolicyRef } from "./claimService";
+import type { UserRef, HospitalRef } from "./claimService";
 
 export interface AdminReportData {
     users: number;
@@ -68,9 +68,14 @@ export const getAuditLogs = async (): Promise<AuditLogItem[]> => {
     }
 };
 
+/**
+ * Reads the fraud rule specification. Uses /fraud/rules rather than
+ * /admin/fraud-rules because the former authorises admins AND officers — the
+ * officer Fraud Analytics page needs it, and the admin-only route 403'd there.
+ */
 export const getFraudRules = async (): Promise<FraudRuleItem[]> => {
     try {
-        const response = await fetch(`${API_URL}/admin/fraud-rules`, {
+        const response = await fetch(`${API_URL}/fraud/rules`, {
             method: "GET",
             headers: getAuthHeaders(),
         });
@@ -109,8 +114,8 @@ export const createUser = async (payload: { name: string; email: string; passwor
         const data = await response.json();
         if (!response.ok) return { error: data.message || "Failed to create user" };
         return data;
-    } catch (error: any) {
-        return { error: error.message || "Failed to create user" };
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : "Failed to create user" };
     }
 };
 
@@ -153,13 +158,13 @@ export const createHospital = async (payload: { name: string; registrationNumber
         const data = await response.json();
         if (!response.ok) return { error: data.message || "Failed to create hospital" };
         return data;
-    } catch (error: any) {
-        return { error: error.message || "Failed to create hospital" };
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : "Failed to create hospital" };
     }
 };
 
 // Policy Management
-export const createPolicy = async (payload: { policyNumber: string; policyholderId: string; coverageLimit: number; coveredTreatments: string[]; startDate: string; expiryDate: string }): Promise<{ message?: string; policy?: PolicyRef; error?: string }> => {
+export const createPolicy = async (payload: { policyNumber: string; policyholderId: string; coverageLimit: number; coveredTreatments: string[]; startDate: string; expiryDate: string }): Promise<{ message?: string; policy?: AdminPolicy; error?: string }> => {
     try {
         const response = await fetch(`${API_URL}/policies`, {
             method: "POST",
@@ -169,7 +174,99 @@ export const createPolicy = async (payload: { policyNumber: string; policyholder
         const data = await response.json();
         if (!response.ok) return { error: data.message || "Failed to create policy" };
         return data;
-    } catch (error: any) {
-        return { error: error.message || "Failed to create policy" };
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : "Failed to create policy" };
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Hospital & policy administration
+// ---------------------------------------------------------------------------
+
+export interface AdminHospital {
+    _id: string;
+    name: string;
+    registrationNumber: string;
+    address: string;
+    contact: string;
+    isEligible: boolean;
+    createdAt?: string;
+}
+
+export interface AdminPolicy {
+    _id: string;
+    policyNumber: string;
+    policyholderId?: UserRef | string;
+    coverageLimit: number;
+    coveredTreatments: string[];
+    startDate?: string;
+    expiryDate?: string;
+    status?: "active" | "expired" | "cancelled";
+    createdAt?: string;
+}
+
+export const getHospitals = async (): Promise<AdminHospital[]> => {
+    try {
+        const response = await fetch(`${API_URL}/hospitals`, {
+            method: "GET",
+            headers: getAuthHeaders(),
+        });
+        if (!response.ok) return [];
+        const data = await response.json();
+        return data.hospitals || [];
+    } catch (error) {
+        console.error("Error fetching hospitals:", error);
+        return [];
+    }
+};
+
+export const updateHospital = async (
+    id: string,
+    payload: Partial<Omit<AdminHospital, "_id">>
+): Promise<{ message?: string; hospital?: AdminHospital; error?: string }> => {
+    try {
+        const response = await fetch(`${API_URL}/hospitals/${id}`, {
+            method: "PUT",
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok) return { error: data.message || "Failed to update hospital" };
+        return data;
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : "Failed to update hospital" };
+    }
+};
+
+export const getPolicies = async (): Promise<AdminPolicy[]> => {
+    try {
+        const response = await fetch(`${API_URL}/policies`, {
+            method: "GET",
+            headers: getAuthHeaders(),
+        });
+        if (!response.ok) return [];
+        const data = await response.json();
+        return data.policies || [];
+    } catch (error) {
+        console.error("Error fetching policies:", error);
+        return [];
+    }
+};
+
+export const updatePolicy = async (
+    id: string,
+    payload: Partial<Pick<AdminPolicy, "coverageLimit" | "coveredTreatments" | "startDate" | "expiryDate" | "status">>
+): Promise<{ message?: string; policy?: AdminPolicy; error?: string }> => {
+    try {
+        const response = await fetch(`${API_URL}/policies/${id}`, {
+            method: "PUT",
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok) return { error: data.message || "Failed to update policy" };
+        return data;
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : "Failed to update policy" };
     }
 };

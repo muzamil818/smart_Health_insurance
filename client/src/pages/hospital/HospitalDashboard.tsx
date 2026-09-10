@@ -8,11 +8,9 @@ import {
     AlertTriangle,
     PlusCircle,
     ArrowRight,
-    TrendingUp,
     Shield,
     Eye,
     Building2,
-    Calendar,
     Activity
 } from "lucide-react";
 import { getHospitalClaims, type Claim } from "../../services/claimService";

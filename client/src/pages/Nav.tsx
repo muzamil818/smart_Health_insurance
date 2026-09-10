@@ -1,13 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Shield, Menu, X, LogOut, User as UserIcon, Activity, FileText, Building2, HelpCircle } from "lucide-react";
-
-interface User {
-    id?: string;
-    name?: string;
-    email?: string;
-    role?: string;
-}
+import { Shield, Menu, X, LogOut, User as UserIcon, Activity, LayoutDashboard } from "lucide-react";
+import { getStoredUser, logout, homeRouteForRole, type User } from "../services/authApi";
 
 const Nav = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -19,14 +13,7 @@ const Nav = () => {
 
     useEffect(() => {
         // Load logged in user from localStorage
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-            try {
-                setUser(JSON.parse(storedUser));
-            } catch {
-                setUser(null);
-            }
-        }
+        setUser(getStoredUser());
 
         // Handle scroll effect for border glow
         const handleScroll = () => {
@@ -42,17 +29,23 @@ const Nav = () => {
     }, []);
 
     const handleLogout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+        logout();
         setUser(null);
         navigate("/auth");
     };
 
+    // Only surface routes that actually exist; the portal link follows the role.
     const navLinks = [
         { name: "Home", path: "/", icon: Activity },
-        { name: "Policies", path: "/policies", icon: FileText },
-        { name: "Hospitals", path: "/hospitals", icon: Building2 },
-        { name: "Support", path: "/support", icon: HelpCircle },
+        ...(user
+            ? [
+                  {
+                      name: "My Dashboard",
+                      path: homeRouteForRole(user.role),
+                      icon: LayoutDashboard,
+                  },
+              ]
+            : []),
     ];
 
     const isActive = (path: string) => location.pathname === path;

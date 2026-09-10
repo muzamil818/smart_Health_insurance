@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { login, register } from '../../services/authApi';
+import { login, register, homeRouteForRole } from '../../services/authApi';
 import { useNavigate } from "react-router-dom";
 
 const Auth = () => {
@@ -28,11 +28,8 @@ const Auth = () => {
                 if (res.token) {
                     localStorage.setItem('token', res.token);
                     localStorage.setItem('user', JSON.stringify(res.user));
-                    if (res.user?.role === "hospital") {
-                        navigate("/hospital");
-                    } else {
-                        navigate("/");
-                    }
+                    // Send each role straight to its own portal.
+                    navigate(homeRouteForRole(res.user?.role));
                 } else {
                     setMessage(res.message || 'Login failed');
                 }
@@ -278,7 +275,11 @@ const Auth = () => {
                             </div>
                         </div>
 
-                        {/* Account Role Selector (Only shown during Register) */}
+                        {/* Account Role Selector (Only shown during Register).
+                            "admin" is intentionally absent: administrators can read every
+                            user record and the whole audit trail, so they are created only
+                            by an existing admin. The server rejects role="admin" here too,
+                            so removing the option is not the only line of defence. */}
                         {!isLogin && (
                             <div className="space-y-1.5 pt-1">
                                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
@@ -290,10 +291,9 @@ const Auth = () => {
                                         onChange={(e) => setRole(e.target.value)}
                                         className="w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all appearance-none cursor-pointer"
                                     >
-                                        <option value="policyholder" className="bg-slate-900 text-slate-100">Policyholder (Self Registration)</option>
-                                        <option value="admin" className="bg-slate-900 text-slate-100">Admin</option>
-                                        <option value="hospital" className="bg-slate-900 text-slate-100">Hospital</option>
-                                        <option value="officer" className="bg-slate-900 text-slate-100">Officer</option>
+                                        <option value="policyholder" className="bg-slate-900 text-slate-100">Policyholder (Insured Member)</option>
+                                        <option value="hospital" className="bg-slate-900 text-slate-100">Hospital Care Provider</option>
+                                        <option value="officer" className="bg-slate-900 text-slate-100">Insurance Officer</option>
                                     </select>
                                     <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-500">
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -301,6 +301,10 @@ const Auth = () => {
                                         </svg>
                                     </div>
                                 </div>
+                                <p className="text-[11px] text-slate-500 leading-relaxed pt-0.5">
+                                    Administrator accounts are created by an existing administrator, not
+                                    through sign-up.
+                                </p>
                             </div>
                         )}
 

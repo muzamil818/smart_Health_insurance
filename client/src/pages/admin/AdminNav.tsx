@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
-    ShieldCheck,
     LayoutDashboard,
     Users,
     Building2,
@@ -71,7 +70,7 @@ const AdminNav = () => {
                         </div>
                         <div>
                             <span className="text-lg font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-                                System Administration
+                                {user?.name || "System Administration"}
                             </span>
                             <span className="block text-[10px] font-bold text-cyan-400 uppercase tracking-widest -mt-1">
                                 Super Admin Control

@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
-import { Users, Plus, Trash2, Shield, Mail, CheckCircle2, AlertCircle } from "lucide-react";
-import { getAllUsers, createUser, deleteUser } from "../../services/adminService";
+import { Users, Plus, Trash2, AlertCircle, Building2 } from "lucide-react";
+import {
+    getAllUsers,
+    createUser,
+    deleteUser,
+    getHospitals,
+    type AdminHospital,
+} from "../../services/adminService";
 import type { UserRef } from "../../services/claimService";
 
 const AdminUsers = () => {
     const [users, setUsers] = useState<UserRef[]>([]);
+    const [hospitals, setHospitals] = useState<AdminHospital[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Create modal state
@@ -13,13 +20,16 @@ const AdminUsers = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [role, setRole] = useState("policyholder");
+    // Required by the API whenever role === "hospital".
+    const [hospitalId, setHospitalId] = useState("");
     const [saving, setSaving] = useState(false);
     const [modalError, setModalError] = useState<string | null>(null);
 
     const fetchUsers = async () => {
         setLoading(true);
-        const data = await getAllUsers();
-        setUsers(data);
+        const [userData, hospitalData] = await Promise.all([getAllUsers(), getHospitals()]);
+        setUsers(userData);
+        setHospitals(hospitalData);
         setLoading(false);
     };
 
@@ -34,9 +44,19 @@ const AdminUsers = () => {
             setModalError("Name, email, and password are required.");
             return;
         }
+        if (role === "hospital" && !hospitalId) {
+            setModalError("Select the hospital facility this staff account belongs to.");
+            return;
+        }
 
         setSaving(true);
-        const res = await createUser({ name, email, password, role });
+        const res = await createUser({
+            name,
+            email,
+            password,
+            role,
+            ...(role === "hospital" ? { hospitalId } : {}),
+        });
         if (res.error) {
             setModalError(res.error);
         } else {
@@ -45,6 +65,7 @@ const AdminUsers = () => {
             setEmail("");
             setPassword("");
             setRole("policyholder");
+            setHospitalId("");
             await fetchUsers();
         }
         setSaving(false);
@@ -206,7 +227,39 @@ const AdminUsers = () => {
                                     <option value="officer">Insurance Officer</option>
                                     <option value="admin">System Administrator</option>
                                 </select>
+                                <p className="text-[10px] text-slate-500 pt-0.5">
+                                    Only policyholders can self-register; every other role is created here.
+                                </p>
                             </div>
+
+                            {/* A hospital staff account must be linked to a facility. */}
+                            {role === "hospital" && (
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold uppercase text-slate-300 flex items-center gap-1.5">
+                                        <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+                                        Hospital Facility
+                                    </label>
+                                    {hospitals.length === 0 ? (
+                                        <p className="text-[11px] text-amber-400 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                                            No hospitals are registered yet. Add one under Hospitals first.
+                                        </p>
+                                    ) : (
+                                        <select
+                                            value={hospitalId}
+                                            onChange={(e) => setHospitalId(e.target.value)}
+                                            className="w-full py-2.5 px-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                                        >
+                                            <option value="">-- Select facility --</option>
+                                            {hospitals.map((h) => (
+                                                <option key={h._id} value={h._id}>
+                                                    {h.name} ({h.registrationNumber})
+                                                    {h.isEligible ? "" : " — suspended"}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </div>
+                            )}
 
                             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
                                 <button

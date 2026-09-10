@@ -1,6 +1,6 @@
 const API_URL = "http://localhost:5000/api";
 
-import type { Claim, ClaimDetailResponse } from "./claimService";
+import type { Claim, FraudScore, ValidationResults } from "./claimService";
 
 export interface DecisionPayload {
     remarks?: string;
@@ -43,8 +43,9 @@ export const approveClaim = async (claimId: string, remarks?: string): Promise<{
             return { message: data.message || "Failed to approve claim", error: data.message };
         }
         return data;
-    } catch (error: any) {
-        return { message: error.message || "Failed to approve claim", error: error.message };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to approve claim";
+        return { message, error: message };
     }
 };
 
@@ -60,8 +61,9 @@ export const rejectClaim = async (claimId: string, remarks?: string): Promise<{ 
             return { message: data.message || "Failed to reject claim", error: data.message };
         }
         return data;
-    } catch (error: any) {
-        return { message: error.message || "Failed to reject claim", error: error.message };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to reject claim";
+        return { message, error: message };
     }
 };
 
@@ -77,12 +79,13 @@ export const requestInformation = async (claimId: string, remarks?: string): Pro
             return { message: data.message || "Failed to request information", error: data.message };
         }
         return data;
-    } catch (error: any) {
-        return { message: error.message || "Failed to request information", error: error.message };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to request information";
+        return { message, error: message };
     }
 };
 
-export const recalculateFraudScore = async (claimId: string): Promise<{ message: string; fraudScore?: any; error?: string }> => {
+export const recalculateFraudScore = async (claimId: string): Promise<{ message: string; fraudScore?: FraudScore; validationResults?: ValidationResults; error?: string }> => {
     try {
         const response = await fetch(`${API_URL}/claims/${claimId}/calculate-fraud-score`, {
             method: "POST",
@@ -93,7 +96,8 @@ export const recalculateFraudScore = async (claimId: string): Promise<{ message:
             return { message: data.message || "Failed to recalculate fraud score", error: data.message };
         }
         return data;
-    } catch (error: any) {
-        return { message: error.message || "Failed to recalculate fraud score", error: error.message };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to recalculate fraud score";
+        return { message, error: message };
     }
 };

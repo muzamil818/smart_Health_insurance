@@ -1,4 +1,5 @@
 const Hospital = require("../models/Hospital");
+const { idOf } = require("../utils/access");
 const { createAuditLog } = require("../services/auditService");
 
 const createHospital = async (req, res) => {
@@ -45,6 +46,17 @@ const getHospitalById = async (req, res) => {
     if (!hospital) {
       return res.status(404).json({ message: "Hospital not found" });
     }
+
+    // Hospital staff may only read the facility their account is linked to.
+    if (
+      req.user.role === "hospital" &&
+      idOf(req.user.hospitalId) !== idOf(hospital._id)
+    ) {
+      return res
+        .status(403)
+        .json({ message: "You can only view your own hospital record" });
+    }
+
     res.json({ hospital });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch hospital", error: error.message });

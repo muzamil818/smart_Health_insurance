@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-    ShieldAlert,
+    ShieldCheck,
     Clock,
     CheckCircle2,
     XCircle,
@@ -9,7 +9,6 @@ import {
     Eye,
     ArrowRight,
     FileCheck,
-    TrendingUp,
     Shield
 } from "lucide-react";
 import { getOfficerClaims } from "../../services/officerService";
