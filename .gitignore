@@ -1,0 +1,23 @@
+# Python virtual environment
+ai-services/.venv/
+# Environment variables and API keys
+ai-services/.env
+ai-services/.env.*
+
+# Allow example environment file
+!ai-services/.env.example
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Generated FAISS indexes
+ai-services/storage/faiss_index/
+ai-services/storage/faiss-index/
+
+# OS files
+.DS_Store
+Thumbs.db

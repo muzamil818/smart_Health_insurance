@@ -1,0 +1,35 @@
+
+# Example Health Insurance Policy
+Policy ID: DEMO-001
+
+## Hospitalization Coverage
+The example policy covers eligible inpatient hospitalization expenses up to $5,000 per policy year, subject to the policy terms and exclusions.
+
+## Required Documents
+A hospitalization claim must include an itemized hospital bill, discharge summary, proof of identity, and a completed claim form.
+
+## Outpatient Consultations
+Outpatient consultations are not covered under this example policy.
+
+## Prescription Medicines
+Prescription medicines purchased outside an eligible inpatient hospitalization are not covered under this example policy.
+
+## Chronic Conditions
+Routine outpatient treatment for chronic conditions, including diabetes management, is not covered under this example policy. Insulin purchased for routine home use is not covered.
+
+## Diagnosis-Specific Limits
+The example policy does not define separate coverage limits for individual diagnoses. Eligible inpatient hospitalization expenses share the annual limit of $5,000.
+
+## Exclusions
+Cosmetic procedures that are not medically necessary are excluded under this example policy.
+
+## Claim Review
+If a required document is missing, request the missing document before completing the claim assessment. A missing document or unusual claim pattern alone does not prove fraud.
+
+## Fraud Review
+Potential fraud indicators must be reviewed by an authorized human reviewer. An unusual claim pattern is a reason for further review, not proof of fraud.
+
+## Policy Limitations
+Coverage depends on eligibility, the applicable policy terms, exclusions, and the remaining annual limit. If this example policy does not specify coverage for a service, the system must state that the policy does not provide enough information to determine coverage.
+
+This document is fictional and intended for software testing only.
